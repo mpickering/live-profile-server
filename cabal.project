@@ -1,0 +1,52 @@
+packages:
+  ./live-profile-server-api
+  ./live-profile-server-backend
+--  ./live-profile-server-frontend
+  ./live-profile-test-app
+  ./servant-rest-derive
+  ./servant-rest-derive-server
+
+
+source-repository-package
+    type: git
+    location: https://github.com/bgamari/ghc-eventlog-socket
+    tag: 1729f08de29197671c463d0fac6da98c7c87cc1f
+
+
+source-repository-package
+    type: git
+    location: https://github.com/mpickering/live-profile-monitor
+    subdir: live-profile-protocol
+    tag: 41ed7bcfb1907bba1c11e4751e76dfcdabfb902f
+
+source-repository-package
+    type: git
+    location: https://github.com/mpickering/live-profile-monitor
+    subdir: live-profile-client
+    tag: 41ed7bcfb1907bba1c11e4751e76dfcdabfb902f
+
+
+source-repository-package
+    type: git
+    location: https://github.com/mpickering/ghc-events.git
+    tag: da087b09e7992347208367cd35d563f2deb8c9b5
+
+source-repository-package
+    type: git
+    location: https://github.com/mpickering/esqueleto.git
+    tag: befcf1a579cf886bab8ef75031a5be5fbd106219
+
+source-repository-package
+    type: git
+    location: https://github.com/mpickering/servant-auth-token
+    subdir: servant-auth-token-persistent
+    tag: 6ddc07cf15dc2e7129328928b6138459a3601acb
+
+source-repository-package
+    type: git
+    location: https://github.com/mpickering/servant-auth-token
+    tag: 6ddc07cf15dc2e7129328928b6138459a3601acb
+
+
+allow-newer: all
+
