@@ -3,6 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-|
 Module      : Profile.Live.Server.Events.Model
 Description : DB representation of an eventlog event
@@ -17,35 +18,36 @@ module Profile.Live.Server.Events.Model where
 #define EVENTLOG_CONSTANTS_ONLY
 #include "EventLogFormat.h"
 
-import Data.Word 
+import Data.Word
 import Database.Persist
-import Database.Persist.TH 
+import Database.Persist.TH
 
-import qualified Data.HashMap.Strict as H 
-import qualified Data.Sequence as S 
+import qualified Data.HashMap.Strict as H
+import qualified Data.Sequence as S
 
 import GHC.RTS.Events
 
 import Profile.Live.Protocol.State
-import Profile.Live.Protocol.State.Capability 
+import Profile.Live.Protocol.State.Capability
 import Profile.Live.Protocol.State.Task
-import Profile.Live.Protocol.State.Thread 
+import Profile.Live.Protocol.State.Thread
 
+{-
 type EventTypeNum = Word16
 type EventTypeDesc = String
 type EventTypeSize = Word16
 type BlockSize = Word64 -- larges of used in eventlog types
 type Capset   = Word32
 type PID = Word32
-type StringId = Word32
 type ParConjDynId = Word64
 type ParConjStaticId = StringId
 type SparkId = Word32
 type FutureId = Word64
 type PerfEventTypeNum = Word32
-type MessageTagImpl = Word 
+-}
 type KernelThreadIdImpl = Word64
-type CapsetTypeImpl = Word 
+type CapsetTypeImpl = Word
+type MessageTagImpl = Word
 
 share [mkPersist sqlSettings
      , mkDeleteCascade sqlSettings
@@ -60,57 +62,57 @@ EventTypeImpl
   eventLog EventLogImplId
   num EventTypeNum
   desc EventTypeDesc
-  size EventTypeSize Maybe 
+  size EventTypeSize Maybe
   EventTypeNumUnique eventLog num
-  deriving Show Eq 
+  deriving Show Eq
 
 EventImpl
   eventLog EventLogImplId
   time Timestamp
   spec EventInfoImplId
-  cap Int Maybe 
-  deriving Show 
+  cap Int Maybe
+  deriving Show
 
-ThreadStopStatusImpl 
-  num Word 
-  threadId ThreadId Maybe 
-  deriving Show 
+ThreadStopStatusImpl
+  num Word
+  threadId ThreadId Maybe
+  deriving Show
 
 EventInfoImpl
   type EventTypeNum -- decoder needs this field
   -- EventBlock
   endTime Timestamp Maybe
   cap Int Maybe -- Also TaskCreate, TaskMigrate,
-    -- CapCreate, CapDelete, CapDisable, 
+    -- CapCreate, CapDelete, CapDisable,
     -- CapEnable, CapsetAssignCap, CapsetRemoveCap
-  blockSize BlockSize Maybe -- Also GCStatsGHC
+  blockSize Word64 Maybe -- Also GCStatsGHC
   -- UnknownEvent
-  ref EventTypeNum Maybe 
-  -- Startup 
-  nCaps Int Maybe 
+  ref EventTypeNum Maybe
+  -- Startup
+  nCaps Int Maybe
   -- Shutdown is not presented
   -- CreateThread, RunThread, StopThread,
   --  ThreadRunnable, MigrateThread, WakeupThread,
   --  ThreadLabel, AssignThreadToProcess
-  thread ThreadId Maybe 
+  thread ThreadId Maybe
   -- StopThread
   status ThreadStopStatusImpl Maybe
   -- MigrateThread, TaskMigrate
-  newCap Int Maybe 
+  newCap Int Maybe
   -- WakeupThread
-  otherCap Int Maybe 
+  otherCap Int Maybe
   -- ThreadLabel
-  threadlabel String Maybe 
+  threadlabel String Maybe
   -- CreateSparkThread
-  sparkThread ThreadId Maybe 
+  sparkThread ThreadId Maybe
   -- SparkCounters
-  sparksCreated Word64 Maybe 
-  sparksDud Word64 Maybe 
-  sparksOverflowed Word64 Maybe 
-  sparksConverted Word64 Maybe 
-  sparksFizzled Word64 Maybe 
+  sparksCreated Word64 Maybe
+  sparksDud Word64 Maybe
+  sparksOverflowed Word64 Maybe
+  sparksConverted Word64 Maybe
+  sparksFizzled Word64 Maybe
   sparksGCd Word64 Maybe
-  sparksRemaining Word64 Maybe 
+  sparksRemaining Word64 Maybe
   -- SparkCreate
   -- SparkDud
   -- SparkOverflow
@@ -122,7 +124,7 @@ EventInfoImpl
   -- TaskCreate, TaskMigrate, TaskDelete
   taskId TaskId Maybe
   -- TaskCreate, PerfCounter, PerfTracepoint
-  tid KernelThreadIdImpl Maybe 
+  tid KernelThreadIdImpl Maybe
   -- RequestSeqGC
   -- RequestParGC
   -- StartGC
@@ -133,89 +135,89 @@ EventInfoImpl
   -- GlobalSyncGC
   -- GCStatsGHC, HeapAllocated, HeapSize, HeapLive,
   --  HeapInfoGHC
-  heapCapset Capset Maybe  
+  heapCapset Capset Maybe
   -- GCStatsGHC
-  gen Int Maybe 
-  copied Word64 Maybe 
-  slop Word64 Maybe 
-  frag Word64 Maybe 
-  parNThreads Int Maybe 
-  parMaxCopied Word64 Maybe 
-  parTotCopied Word64 Maybe 
+  gen Int Maybe
+  copied Word64 Maybe
+  slop Word64 Maybe
+  frag Word64 Maybe
+  parNThreads Int Maybe
+  parMaxCopied Word64 Maybe
+  parTotCopied Word64 Maybe
   -- HeapAllocated
-  allocBytes Word64 Maybe 
+  allocBytes Word64 Maybe
   -- HeapSize
   sizeBytes Word64 Maybe
   -- HeapLive
-  liveBytes Word64 Maybe 
+  liveBytes Word64 Maybe
   -- HeapInfoGHC
-  gens Int Maybe 
-  maxHeapSize Word64 Maybe 
-  allocAreaSize Word64 Maybe 
+  gens Int Maybe
+  maxHeapSize Word64 Maybe
+  allocAreaSize Word64 Maybe
   mblockSize Word64 Maybe
   -- CapCreate
   -- CapDelete
   -- CapDisable
   -- CapEnable
   -- CapsetCreate, CapsetDelete, CapsetAssignCap, CapsetRemoveCap, RtsIdentifier, ProgramArgs, ProgramEnv, OsProcessPid, OsProcessParentPid, WallClockTime
-  capset Capset Maybe 
+  capset Capset Maybe
   -- CapsetCreate
-  capsetType CapsetTypeImpl Maybe 
+  capsetType CapsetTypeImpl Maybe
   -- CapsetDelete
   -- CapsetRemoveCap
   -- RtsIdentifier
-  rtsident String Maybe 
+  rtsident String Maybe
   -- ProgramArgs
-  args [String] Maybe 
+  args [String] Maybe
   -- ProgramEnv
-  env [String] Maybe 
+  env [String] Maybe
   -- OsProcessPid
-  pid PID Maybe 
+  pid PID Maybe
   -- OsProcessParentPid
-  ppid PID Maybe 
+  ppid PID Maybe
   -- WallClockTime
-  sec Word64 Maybe 
-  nsec Word32 Maybe 
+  sec Word64 Maybe
+  nsec Word32 Maybe
   -- Message, UserMessage
-  msg String Maybe 
+  msg String Maybe
   -- UserMarker
-  markername String Maybe 
+  markername String Maybe
   -- Version
-  version String Maybe 
+  version String Maybe
   -- ProgramInvocation
-  commandline String Maybe 
+  commandline String Maybe
   -- CreateMachine, KillMachine
   machine MachineId Maybe
-  -- CreateMachine 
-  realtime Timestamp Maybe 
+  -- CreateMachine
+  realtime Timestamp Maybe
   -- CreateProcess, KillProcess, AssignThreadToProcess
-  process ProcessId Maybe 
+  process ProcessId Maybe
   -- EdenStartReceive
   -- EdenEndReceive
   -- SendMessage, ReceiveMessage, SendReceiveLocalMessage
-  mesTag MessageTagImpl Maybe 
-  senderProcess ProcessId Maybe 
-  senderThread ThreadId Maybe 
+  mesTag MessageTagImpl Maybe
+  senderProcess ProcessId Maybe
+  senderThread ThreadId Maybe
   receiverMachine MachineId Maybe
-  receiverProcess ProcessId Maybe 
+  receiverProcess ProcessId Maybe
   receiverInport PortId Maybe
-  -- ReceiveMessage 
-  senderMachine MachineId Maybe 
+  -- ReceiveMessage
+  senderMachine MachineId Maybe
   messageSize MessageSize Maybe
   -- SendReceiveLocalMessage
   -- InternString
-  str String Maybe 
-  sId StringId Maybe 
+  str String Maybe
+  sId StringId Maybe
   -- MerStartParConjunction, MerEndParConjunction, MerEndParConjunct, MerCreateSpark
-  dynId ParConjDynId Maybe 
+  dynId ParConjDynId Maybe
   -- MerStartParConjunction
-  staticId ParConjStaticId Maybe 
+  staticId ParConjStaticId Maybe
   -- MerCreateSpark
-  sparkId SparkId Maybe 
+  sparkId SparkId Maybe
   -- MerFutureCreate, MerFutureWaitNosuspend, MerFutureWaitSuspended, MerFutureSignal
-  futureId FutureId Maybe 
+  futureId FutureId Maybe
   -- MerFutureCreate
-  nameId StringId Maybe 
+  nameId StringId Maybe
   -- MerFutureWaitNosuspend
   -- MerFutureWaitSuspended
   -- MerFutureSignal
@@ -227,95 +229,95 @@ EventInfoImpl
   -- MerCapSleeping
   -- MerCallingMain
   -- PerfName, PerfCounter, PerfTracepoint
-  perfNum PerfEventTypeNum Maybe 
+  perfNum PerfEventTypeNum Maybe
   -- PerfName
-  name String Maybe 
+  name String Maybe
   -- PerfCounter
   period Word64 Maybe
 
-  deriving Show 
+  deriving Show
 
-EventlogStateImpl 
+EventlogStateImpl
   eventLog EventLogImplId
   gc Timestamp Maybe
   time Timestamp
 
-ThreadExecutionStateImpl 
-  num Word 
+ThreadExecutionStateImpl
+  num Word
   status ThreadStopStatusImpl Maybe
 
-ThreadStateImpl 
+ThreadStateImpl
   state EventlogStateImplId
-  tid ThreadId 
-  label String Maybe 
-  cap Int 
+  tid ThreadId
+  label String Maybe
+  cap Int
   execution ThreadExecutionStateImpl
-  sparkCount Int Maybe 
+  sparkCount Int Maybe
   creationTimestamp Timestamp
   lastTimestamp Timestamp
 
 CapsetStateImpl
   state EventlogStateImplId
-  cid Capset 
+  cid Capset
   type CapsetTypeImpl
   lastTimestamp Timestamp
   timestamp Timestamp
-  rtsIdent String 
-  osPid PID Maybe 
-  osParentPid PID Maybe 
+  rtsIdent String
+  osPid PID Maybe
+  osParentPid PID Maybe
   wallSecs Word64
   wallNsecs Word32
   heapAllocated Word64
   heapSize Word64
   heapLive Word64
-  heapGens Int 
-  heapMaxSize Word64 
+  heapGens Int
+  heapMaxSize Word64
   heapAllocAreaSize Word64
   heapMBlockSize Word64
   heapBlockSize Word64
-  gcTimestamp Timestamp Maybe 
+  gcTimestamp Timestamp Maybe
   gcCopied Word64
   gcSlop Word64
   gcFrag Word64
-  gcParThreads Int 
+  gcParThreads Int
   gcParMaxCopied Word64
-  gcParTotCopied Word64 
-  deriving Show 
+  gcParTotCopied Word64
+  deriving Show
 
 CapsetStateCap
   state CapsetStateImplId
   cap Int
-  deriving Show 
+  deriving Show
 
-CapsetStateArg 
+CapsetStateArg
   state CapsetStateImplId
-  arg String 
+  arg String
 
 CapsetStateEnv
   state CapsetStateImplId
-  env String 
+  env String
 
-CapStateImpl 
+CapStateImpl
   state EventlogStateImplId
-  cid Int 
-  disabled Bool 
+  cid Int
+  disabled Bool
   lastTimestamp Timestamp
   timestamp Timestamp
-  deriving Show 
+  deriving Show
 
-TaskStateImpl 
+TaskStateImpl
   state EventlogStateImplId
-  taskId TaskId 
-  cap Int 
+  taskId TaskId
+  cap Int
   tid KernelThreadIdImpl
   timestamp Timestamp
   lastTimestamp Timestamp
-  deriving Show 
+  deriving Show
 |]
 
 -- | Helper to decode from DB representation
 fromThreadStopStatusImpl :: ThreadStopStatusImpl -> Maybe ThreadStopStatus
-fromThreadStopStatusImpl ThreadStopStatusImpl{..} = case threadStopStatusImplNum of 
+fromThreadStopStatusImpl ThreadStopStatusImpl{..} = case threadStopStatusImplNum of
   0 -> Just NoStatus
   1 -> Just HeapOverflow
   2 -> Just StackOverflow
@@ -340,8 +342,8 @@ fromThreadStopStatusImpl ThreadStopStatusImpl{..} = case threadStopStatusImplNum
   _ -> Nothing
 
 -- | Helper to convert into DB representation
-toThreadStopStatusImpl :: ThreadStopStatus -> ThreadStopStatusImpl 
-toThreadStopStatusImpl st = case st of 
+toThreadStopStatusImpl :: ThreadStopStatus -> ThreadStopStatusImpl
+toThreadStopStatusImpl st = case st of
   NoStatus -> ThreadStopStatusImpl 0 Nothing
   HeapOverflow -> ThreadStopStatusImpl 1 Nothing
   StackOverflow -> ThreadStopStatusImpl 2 Nothing
@@ -365,8 +367,8 @@ toThreadStopStatusImpl st = case st of
   BlockedOnBlackHoleOwnedBy t -> ThreadStopStatusImpl 20 (Just t)
 
 -- | Helper to convert from DB representation
-fromMessageTagImpl :: MessageTagImpl -> Maybe MessageTag 
-fromMessageTagImpl t = case t of 
+fromMessageTagImpl :: MessageTagImpl -> Maybe MessageTag
+fromMessageTagImpl t = case t of
   0 -> Just Ready
   1 -> Just NewPE
   2 -> Just PETIDS
@@ -380,28 +382,28 @@ fromMessageTagImpl t = case t of
   10 -> Just Part
   11 -> Just Terminate
   12 -> Just Packet
-  _ -> Nothing 
+  _ -> Nothing
 
 -- | Helper to convert to DB representation
-toMessageTagImpl :: MessageTag -> MessageTagImpl 
-toMessageTagImpl t = case t of 
-  Ready -> 0 
-  NewPE -> 1 
-  PETIDS -> 2 
-  Finish -> 3 
-  FailPE -> 4 
-  RFork -> 5 
-  Connect -> 6 
-  DataMes -> 7 
-  Head -> 8 
-  Constr -> 9 
-  Part -> 10 
-  Terminate -> 11 
-  Packet -> 12 
+toMessageTagImpl :: MessageTag -> MessageTagImpl
+toMessageTagImpl t = case t of
+  Ready -> 0
+  NewPE -> 1
+  PETIDS -> 2
+  Finish -> 3
+  FailPE -> 4
+  RFork -> 5
+  Connect -> 6
+  DataMes -> 7
+  Head -> 8
+  Constr -> 9
+  Part -> 10
+  Terminate -> 11
+  Packet -> 12
 
 -- | Helper to convert from DB representation
-fromCapsetTypeImpl :: CapsetTypeImpl -> Maybe CapsetType 
-fromCapsetTypeImpl i = case i of 
+fromCapsetTypeImpl :: CapsetTypeImpl -> Maybe CapsetType
+fromCapsetTypeImpl i = case i of
   0 -> Just CapsetCustom
   1 -> Just CapsetOsProcess
   2 -> Just CapsetClockDomain
@@ -410,10 +412,10 @@ fromCapsetTypeImpl i = case i of
 
 -- | Helper to convert to DB representation
 toCapsetTypeImpl :: CapsetType -> CapsetTypeImpl
-toCapsetTypeImpl c = case c of 
+toCapsetTypeImpl c = case c of
   CapsetCustom -> 0
   CapsetOsProcess -> 1
-  CapsetClockDomain -> 2 
+  CapsetClockDomain -> 2
   CapsetUnknown -> 3
 
 -- | Helper to convert to DB representation
@@ -421,41 +423,41 @@ toEventImpl :: EventLogImplId -> Event -> (EventInfoImpl, EventInfoImplId -> Eve
 toEventImpl i Event{..} = (toEventInfoImpl evSpec
   , \ei -> EventImpl {
       eventImplEventLog = i
-    , eventImplTime = evTime 
+    , eventImplTime = evTime
     , eventImplSpec = ei
     , eventImplCap = evCap
     })
 
 -- | Helper to convert from DB representation
-fromEventImpl :: EventImpl -> EventInfoImpl -> Maybe Event 
-fromEventImpl EventImpl{..} einfo = Event 
+fromEventImpl :: EventImpl -> EventInfoImpl -> Maybe Event
+fromEventImpl EventImpl{..} einfo = Event
   <$> pure eventImplTime
   <*> fromEventInfoImpl einfo
   <*> pure eventImplCap
 
 -- | Helper same as 'fromEventImpl'
-fromEventEntityImpl :: Entity EventImpl -> Entity EventInfoImpl -> Maybe Event 
-fromEventEntityImpl (Entity _ e) (Entity _ ei) = fromEventImpl e ei 
+fromEventEntityImpl :: Entity EventImpl -> Entity EventInfoImpl -> Maybe Event
+fromEventEntityImpl (Entity _ e) (Entity _ ei) = fromEventImpl e ei
 
 -- | Helper to convert to DB representation
-toEventTypeImpl :: EventLogImplId -> EventType -> EventTypeImpl 
+toEventTypeImpl :: EventLogImplId -> EventType -> EventTypeImpl
 toEventTypeImpl i EventType{..} = EventTypeImpl {
     eventTypeImplEventLog = i
-  , eventTypeImplNum = num 
-  , eventTypeImplDesc = desc 
-  , eventTypeImplSize = size 
+  , eventTypeImplNum = num
+  , eventTypeImplDesc = desc
+  , eventTypeImplSize = size
   }
 
 -- | Helper to convert from DB representation
-fromEventTypeImpl :: EventTypeImpl -> EventType 
+fromEventTypeImpl :: EventTypeImpl -> EventType
 fromEventTypeImpl EventTypeImpl{..} = EventType {
-    num = eventTypeImplNum 
-  , desc = eventTypeImplDesc 
-  , size = eventTypeImplSize 
+    num = eventTypeImplNum
+  , desc = eventTypeImplDesc
+  , size = eventTypeImplSize
   }
 
 -- | Helper to create event info row without data
-emptyEventInfoImpl :: EventTypeNum -> EventInfoImpl 
+emptyEventInfoImpl :: EventTypeNum -> EventInfoImpl
 emptyEventInfoImpl t = EventInfoImpl {
     eventInfoImplType = t
   , eventInfoImplEndTime = Nothing
@@ -487,7 +489,7 @@ emptyEventInfoImpl t = EventInfoImpl {
   , eventInfoImplParNThreads = Nothing
   , eventInfoImplParMaxCopied = Nothing
   , eventInfoImplParTotCopied = Nothing
-  , eventInfoImplAllocBytes = Nothing 
+  , eventInfoImplAllocBytes = Nothing
   , eventInfoImplSizeBytes = Nothing
   , eventInfoImplLiveBytes = Nothing
   , eventInfoImplGens = Nothing
@@ -532,11 +534,11 @@ emptyEventInfoImpl t = EventInfoImpl {
   }
 
 -- | Helper to convert to DB representation
-toEventInfoImpl :: EventInfo -> EventInfoImpl 
-toEventInfoImpl e = case e of 
+toEventInfoImpl :: EventInfo -> EventInfoImpl
+toEventInfoImpl e = case e of
   EventBlock{..} -> defImpl {
       eventInfoImplEndTime = Just end_time
-    , eventInfoImplCap = Just cap 
+    , eventInfoImplCap = Just cap
     , eventInfoImplBlockSize = Just $ fromIntegral block_size
     }
   UnknownEvent{..} -> defImpl {
@@ -564,11 +566,11 @@ toEventInfoImpl e = case e of
     , eventInfoImplNewCap = Just newCap
     }
   WakeupThread {..} -> defImpl {
-      eventInfoImplThread = Just thread 
+      eventInfoImplThread = Just thread
     , eventInfoImplOtherCap = Just otherCap
     }
   ThreadLabel {..} -> defImpl {
-      eventInfoImplThread = Just thread 
+      eventInfoImplThread = Just thread
     , eventInfoImplThreadlabel = Just threadlabel
     }
   CreateSparkThread {..} -> defImpl {
@@ -584,14 +586,14 @@ toEventInfoImpl e = case e of
     , eventInfoImplSparksRemaining = Just sparksRemaining
     }
   SparkCreate -> defImpl
-  SparkDud -> defImpl 
-  SparkOverflow -> defImpl 
+  SparkDud -> defImpl
+  SparkOverflow -> defImpl
   SparkRun -> defImpl
   SparkSteal {..} -> defImpl {
       eventInfoImplVictimCap = Just victimCap
     }
   SparkFizzle -> defImpl
-  SparkGC -> defImpl 
+  SparkGC -> defImpl
   TaskCreate {..} -> defImpl {
       eventInfoImplTaskId = Just taskId
     , eventInfoImplCap = Just cap
@@ -600,19 +602,19 @@ toEventInfoImpl e = case e of
   TaskMigrate {..} -> defImpl {
       eventInfoImplTaskId = Just taskId
     , eventInfoImplCap = Just cap
-    , eventInfoImplNewCap = Just new_cap 
+    , eventInfoImplNewCap = Just new_cap
     }
   TaskDelete {..} -> defImpl {
       eventInfoImplTaskId = Just taskId
     }
-  RequestSeqGC -> defImpl 
-  RequestParGC -> defImpl 
-  StartGC -> defImpl 
-  GCWork -> defImpl 
-  GCIdle -> defImpl 
-  GCDone -> defImpl 
-  EndGC -> defImpl 
-  GlobalSyncGC -> defImpl 
+  RequestSeqGC -> defImpl
+  RequestParGC -> defImpl
+  StartGC -> defImpl
+  GCWork -> defImpl
+  GCIdle -> defImpl
+  GCDone -> defImpl
+  EndGC -> defImpl
+  GlobalSyncGC -> defImpl
   GCStatsGHC {..} -> defImpl {
       eventInfoImplHeapCapset = Just heapCapset
     , eventInfoImplGen = Just gen
@@ -668,7 +670,7 @@ toEventInfoImpl e = case e of
     }
   CapsetRemoveCap {..} -> defImpl {
       eventInfoImplCapset = Just capset
-    , eventInfoImplCap = Just cap 
+    , eventInfoImplCap = Just cap
     }
   RtsIdentifier {..} -> defImpl {
       eventInfoImplCapset = Just capset
@@ -715,7 +717,7 @@ toEventInfoImpl e = case e of
     , eventInfoImplRealtime = Just realtime
     }
   KillMachine {..} -> defImpl {
-      eventInfoImplMachine = Just machine 
+      eventInfoImplMachine = Just machine
     }
   CreateProcess {..} -> defImpl {
       eventInfoImplProcess = Just process
@@ -730,11 +732,11 @@ toEventInfoImpl e = case e of
   EdenStartReceive -> defImpl
   EdenEndReceive -> defImpl
   SendMessage {..} -> defImpl {
-      eventInfoImplMesTag = Just $ toMessageTagImpl mesTag 
+      eventInfoImplMesTag = Just $ toMessageTagImpl mesTag
     , eventInfoImplSenderProcess = Just senderProcess
-    , eventInfoImplSenderThread = Just senderThread 
-    , eventInfoImplReceiverMachine = Just receiverMachine 
-    , eventInfoImplReceiverProcess = Just receiverProcess 
+    , eventInfoImplSenderThread = Just senderThread
+    , eventInfoImplReceiverMachine = Just receiverMachine
+    , eventInfoImplReceiverProcess = Just receiverProcess
     , eventInfoImplReceiverInport = Just receiverInport
     }
   ReceiveMessage {..} -> defImpl {
@@ -754,7 +756,7 @@ toEventInfoImpl e = case e of
     , eventInfoImplReceiverInport = Just receiverInport
     }
   InternString {..} -> defImpl {
-      eventInfoImplStr = Just str 
+      eventInfoImplStr = Just str
     , eventInfoImplSId = Just sId
     }
   MerStartParConjunction {..} -> defImpl {
@@ -784,14 +786,14 @@ toEventInfoImpl e = case e of
   MerFutureSignal {..} -> defImpl {
       eventInfoImplFutureId = Just future_id
     }
-  MerLookingForGlobalThread -> defImpl 
-  MerWorkStealing  -> defImpl 
-  MerLookingForLocalSpark -> defImpl 
+  MerLookingForGlobalThread -> defImpl
+  MerWorkStealing  -> defImpl
+  MerLookingForLocalSpark -> defImpl
   MerReleaseThread {..} -> defImpl {
       eventInfoImplThreadId = Just thread_id
     }
   MerCapSleeping -> defImpl
-  MerCallingMain -> defImpl 
+  MerCallingMain -> defImpl
   PerfName {..} -> defImpl {
       eventInfoImplPerfNum = Just perfNum
     , eventInfoImplName = Just name
@@ -805,13 +807,13 @@ toEventInfoImpl e = case e of
       eventInfoImplPerfNum = Just perfNum
     , eventInfoImplTid = Just $ kernelThreadId tid
     }
-  where 
+  where
   defImpl = emptyEventInfoImpl $ eventTypeNum e
 
 -- | Helper to reconstruct event info from RDBMS representation
 fromEventInfoImpl :: EventInfoImpl -> Maybe EventInfo
-fromEventInfoImpl EventInfoImpl{..} = case eventInfoImplType of 
-  EVENT_CREATE_THREAD -> CreateThread 
+fromEventInfoImpl EventInfoImpl{..} = case eventInfoImplType of
+  EVENT_CREATE_THREAD -> CreateThread
     <$> eventInfoImplThread
   EVENT_RUN_THREAD -> RunThread
     <$> eventInfoImplThread
@@ -855,7 +857,7 @@ fromEventInfoImpl EventInfoImpl{..} = case eventInfoImplType of
   EVENT_SPARK_GC -> Just SparkGC
   EVENT_TASK_CREATE -> TaskCreate
     <$> eventInfoImplTaskId
-    <*> eventInfoImplCap 
+    <*> eventInfoImplCap
     <*> (fmap KernelThreadId eventInfoImplTid)
   EVENT_TASK_MIGRATE -> TaskMigrate
     <$> eventInfoImplTaskId
@@ -863,16 +865,16 @@ fromEventInfoImpl EventInfoImpl{..} = case eventInfoImplType of
     <*> eventInfoImplNewCap
   EVENT_TASK_DELETE -> TaskDelete
     <$> eventInfoImplTaskId
-  EVENT_LOG_MSG -> Message 
-    <$> eventInfoImplMsg 
+  EVENT_LOG_MSG -> Message
+    <$> eventInfoImplMsg
   EVENT_STARTUP -> Startup
     <$> eventInfoImplNCaps
   EVENT_BLOCK_MARKER -> EventBlock
     <$> eventInfoImplEndTime
-    <*> eventInfoImplCap 
+    <*> eventInfoImplCap
     <*> (fmap fromIntegral eventInfoImplBlockSize)
   EVENT_USER_MSG -> UserMessage
-    <$> eventInfoImplMsg 
+    <$> eventInfoImplMsg
   EVENT_USER_MARKER -> UserMarker
     <$> eventInfoImplMarkername
   EVENT_GC_IDLE -> Just GCIdle
@@ -880,7 +882,7 @@ fromEventInfoImpl EventInfoImpl{..} = case eventInfoImplType of
   EVENT_GC_DONE -> Just GCDone
   EVENT_GC_STATS_GHC -> GCStatsGHC
     <$> eventInfoImplHeapCapset
-    <*> eventInfoImplGen 
+    <*> eventInfoImplGen
     <*> eventInfoImplCopied
     <*> eventInfoImplSlop
     <*> eventInfoImplFrag
@@ -898,19 +900,19 @@ fromEventInfoImpl EventInfoImpl{..} = case eventInfoImplType of
     <*> eventInfoImplLiveBytes
   EVENT_HEAP_INFO_GHC -> HeapInfoGHC
     <$> eventInfoImplHeapCapset
-    <*> eventInfoImplGens 
+    <*> eventInfoImplGens
     <*> eventInfoImplMaxHeapSize
     <*> eventInfoImplAllocAreaSize
     <*> eventInfoImplMblockSize
     <*> eventInfoImplBlockSize
   EVENT_CAP_CREATE -> CapCreate
-    <$> eventInfoImplCap 
+    <$> eventInfoImplCap
   EVENT_CAP_DELETE -> CapDelete
-    <$> eventInfoImplCap 
+    <$> eventInfoImplCap
   EVENT_CAP_DISABLE -> CapDisable
-    <$> eventInfoImplCap 
+    <$> eventInfoImplCap
   EVENT_CAP_ENABLE -> CapEnable
-    <$> eventInfoImplCap 
+    <$> eventInfoImplCap
   EVENT_CAPSET_CREATE -> CapsetCreate
     <$> eventInfoImplCapset
     <*> (fromCapsetTypeImpl =<< eventInfoImplCapsetType)
@@ -920,29 +922,29 @@ fromEventInfoImpl EventInfoImpl{..} = case eventInfoImplType of
     <$> eventInfoImplCapset
     <*> eventInfoImplCap
   EVENT_CAPSET_REMOVE_CAP -> CapsetRemoveCap
-    <$> eventInfoImplCapset 
+    <$> eventInfoImplCapset
     <*> eventInfoImplCap
   EVENT_RTS_IDENTIFIER -> RtsIdentifier
-    <$> eventInfoImplCapset 
+    <$> eventInfoImplCapset
     <*> eventInfoImplRtsident
   EVENT_PROGRAM_ARGS -> ProgramArgs
-    <$> eventInfoImplCapset 
+    <$> eventInfoImplCapset
     <*> eventInfoImplArgs
   EVENT_PROGRAM_ENV -> ProgramEnv
-    <$> eventInfoImplCapset 
+    <$> eventInfoImplCapset
     <*> eventInfoImplEnv
   EVENT_OSPROCESS_PID -> OsProcessPid
-    <$> eventInfoImplCapset 
+    <$> eventInfoImplCapset
     <*> eventInfoImplPid
   EVENT_OSPROCESS_PPID -> OsProcessParentPid
-    <$> eventInfoImplCapset 
-    <*> eventInfoImplPpid 
+    <$> eventInfoImplCapset
+    <*> eventInfoImplPpid
   EVENT_WALL_CLOCK_TIME -> WallClockTime
     <$> eventInfoImplCapset
-    <*> eventInfoImplSec 
+    <*> eventInfoImplSec
     <*> eventInfoImplNsec
-  EVENT_INTERN_STRING -> InternString 
-    <$> eventInfoImplStr 
+  EVENT_INTERN_STRING -> InternString
+    <$> eventInfoImplStr
     <*> eventInfoImplSId
   EVENT_VERSION -> Version
     <$> eventInfoImplVersion
@@ -1014,7 +1016,7 @@ fromEventInfoImpl EventInfoImpl{..} = case eventInfoImplType of
     <*> eventInfoImplName
   EVENT_PERF_COUNTER -> PerfCounter
     <$> eventInfoImplPerfNum
-    <*> (fmap KernelThreadId eventInfoImplTid) 
+    <*> (fmap KernelThreadId eventInfoImplTid)
     <*> eventInfoImplPeriod
   EVENT_PERF_TRACEPOINT -> PerfTracepoint
     <$> eventInfoImplPerfNum
@@ -1370,7 +1372,7 @@ gcEventTypes = [
 
 -- | Helper to convert into DB representation
 toEventlogStateImpl :: EventLogImplId
-  -> EventlogState 
+  -> EventlogState
   -> (EventlogStateImpl
     , EventlogStateImplId -> [ThreadStateImpl]
     , EventlogStateImplId -> [(
@@ -1394,7 +1396,7 @@ toEventlogStateImpl i EventlogState{..} = (impl, threads, capsets, caps, tasks)
 
 
 -- | Helper to convert from DB representation
-fromEventlogStateImpl :: EventlogStateImpl 
+fromEventlogStateImpl :: EventlogStateImpl
   -> [ThreadStateImpl]
   -> [(CapsetStateImpl
     , [CapsetStateCap]
@@ -1411,12 +1413,12 @@ fromEventlogStateImpl EventlogStateImpl{..} threads capsets caps tasks = Eventlo
   <*> pure eventlogStateImplGc
   <*> pure eventlogStateImplTime
 
-uncurry4 :: (a -> b -> c -> d -> e) -> (a, b, c, d) -> e 
-uncurry4 f (a, b, c, d) = f a b c d 
+uncurry4 :: (a -> b -> c -> d -> e) -> (a, b, c, d) -> e
+uncurry4 f (a, b, c, d) = f a b c d
 
 -- | Helper to convert into DB representation
 toThreadExecutionStateImpl :: ThreadExecutionState -> ThreadExecutionStateImpl
-toThreadExecutionStateImpl s = case s of 
+toThreadExecutionStateImpl s = case s of
   ThreadCreated -> ThreadExecutionStateImpl 0 Nothing
   ThreadQueued -> ThreadExecutionStateImpl 1 Nothing
   ThreadRunning -> ThreadExecutionStateImpl 2 Nothing
@@ -1425,7 +1427,7 @@ toThreadExecutionStateImpl s = case s of
 
 -- | Helper to convert from DB representation
 fromThreadExecutionStateImpl :: ThreadExecutionStateImpl -> Maybe ThreadExecutionState
-fromThreadExecutionStateImpl (ThreadExecutionStateImpl i mstatus) = case i of 
+fromThreadExecutionStateImpl (ThreadExecutionStateImpl i mstatus) = case i of
   0 -> Just ThreadCreated
   1 -> Just ThreadQueued
   2 -> Just ThreadRunning
@@ -1434,7 +1436,7 @@ fromThreadExecutionStateImpl (ThreadExecutionStateImpl i mstatus) = case i of
   _ -> Nothing
 
 -- | Helper to convert into DB representation
-toThreadStateImpl :: EventlogStateImplId -> ThreadState -> ThreadStateImpl 
+toThreadStateImpl :: EventlogStateImplId -> ThreadState -> ThreadStateImpl
 toThreadStateImpl i ThreadState{..} = ThreadStateImpl {
     threadStateImplState = i
   , threadStateImplTid = threadId
@@ -1447,19 +1449,19 @@ toThreadStateImpl i ThreadState{..} = ThreadStateImpl {
   }
 
 -- | Helper to convert from DB implementation
-fromThreadStateImpl :: ThreadStateImpl -> Maybe ThreadState 
+fromThreadStateImpl :: ThreadStateImpl -> Maybe ThreadState
 fromThreadStateImpl ThreadStateImpl{..} = (\e -> ThreadState {
-    threadId = threadStateImplTid 
-  , threadLabel = threadStateImplLabel 
-  , threadCap = threadStateImplCap 
+    threadId = threadStateImplTid
+  , threadLabel = threadStateImplLabel
+  , threadCap = threadStateImplCap
   , threadExecution = e
-  , threadSparkCount = threadStateImplSparkCount 
-  , threadCreationTimestamp = threadStateImplCreationTimestamp 
-  , threadLastTimestamp = threadStateImplLastTimestamp 
+  , threadSparkCount = threadStateImplSparkCount
+  , threadCreationTimestamp = threadStateImplCreationTimestamp
+  , threadLastTimestamp = threadStateImplLastTimestamp
   }) <$> fromThreadExecutionStateImpl threadStateImplExecution
 
 -- | Helper to convert to DB representation
-toCapStateImpl :: EventlogStateImplId -> CapState -> CapStateImpl 
+toCapStateImpl :: EventlogStateImplId -> CapState -> CapStateImpl
 toCapStateImpl i CapState{..} = CapStateImpl {
     capStateImplState = i
   , capStateImplCid = capStateId
@@ -1469,22 +1471,22 @@ toCapStateImpl i CapState{..} = CapStateImpl {
   }
 
 -- | Helper to convert from DB representation
-fromCapStateImpl :: CapStateImpl -> CapState 
+fromCapStateImpl :: CapStateImpl -> CapState
 fromCapStateImpl CapStateImpl{..} = CapState {
-    capStateId = capStateImplCid 
-  , capStateDisabled = capStateImplDisabled 
-  , capStateLastTimestamp = capStateImplLastTimestamp 
-  , capStateTimestamp = capStateImplTimestamp 
+    capStateId = capStateImplCid
+  , capStateDisabled = capStateImplDisabled
+  , capStateLastTimestamp = capStateImplLastTimestamp
+  , capStateTimestamp = capStateImplTimestamp
   }
 
 -- | Helper to convert into DB representation
-toCapsetStateImpl :: EventlogStateImplId -> CapsetState 
+toCapsetStateImpl :: EventlogStateImplId -> CapsetState
   -> (CapsetStateImpl
     , CapsetStateImplId -> S.Seq CapsetStateCap
     , CapsetStateImplId -> [CapsetStateArg]
     , CapsetStateImplId -> [CapsetStateEnv] )
 toCapsetStateImpl i CapsetState{..} = (impl, caps, args, envs)
-  where 
+  where
   impl = CapsetStateImpl {
       capsetStateImplState = i
     , capsetStateImplCid = capsetStateId
@@ -1514,39 +1516,39 @@ toCapsetStateImpl i CapsetState{..} = (impl, caps, args, envs)
     }
   caps k = CapsetStateCap k <$> capsetStateCaps
   args k = CapsetStateArg k <$> capsetStateArgs
-  envs k = CapsetStateEnv k <$> capsetStateEnvs 
+  envs k = CapsetStateEnv k <$> capsetStateEnvs
 
 -- | Helper to convert from DB representation
-fromCapsetStateImpl :: CapsetStateImpl 
+fromCapsetStateImpl :: CapsetStateImpl
   -> [CapsetStateCap]
   -> [CapsetStateArg]
   -> [CapsetStateEnv]
-  -> Maybe CapsetState 
+  -> Maybe CapsetState
 fromCapsetStateImpl CapsetStateImpl{..} caps args envs = (\ct -> CapsetState {
     capsetStateId = capsetStateImplCid
   , capsetStateType = ct
-  , capsetStateLastTimestamp = capsetStateImplLastTimestamp 
-  , capsetStateTimestamp = capsetStateImplTimestamp 
-  , capsetStateRtsIdent = capsetStateImplRtsIdent 
-  , capsetStateOsPid = capsetStateImplOsPid 
-  , capsetStateOsParentPid = capsetStateImplOsParentPid 
-  , capsetStateWallSecs = capsetStateImplWallSecs 
-  , capsetStateWallNsecs = capsetStateImplWallNsecs 
-  , capsetStateHeapAllocated = capsetStateImplHeapAllocated 
-  , capsetStateHeapSize = capsetStateImplHeapSize 
-  , capsetStateHeapLive = capsetStateImplHeapLive 
-  , capsetStateHeapGens = capsetStateImplHeapGens 
-  , capsetStateHeapMaxSize = capsetStateImplHeapMaxSize 
-  , capsetStateHeapAllocAreaSize = capsetStateImplHeapAllocAreaSize 
-  , capsetStateHeapMBlockSize = capsetStateImplHeapMBlockSize 
-  , capsetStateHeapBlockSize = capsetStateImplHeapBlockSize 
-  , capsetStateGCTimestamp = capsetStateImplGcTimestamp 
-  , capsetStateGCCopied = capsetStateImplGcCopied 
-  , capsetStateGCSlop = capsetStateImplGcSlop 
-  , capsetStateGCFrag = capsetStateImplGcFrag 
-  , capsetStateGCParThreads = capsetStateImplGcParThreads 
-  , capsetStateGCParMaxCopied = capsetStateImplGcParMaxCopied 
-  , capsetStateGCParTotCopied = capsetStateImplGcParTotCopied 
+  , capsetStateLastTimestamp = capsetStateImplLastTimestamp
+  , capsetStateTimestamp = capsetStateImplTimestamp
+  , capsetStateRtsIdent = capsetStateImplRtsIdent
+  , capsetStateOsPid = capsetStateImplOsPid
+  , capsetStateOsParentPid = capsetStateImplOsParentPid
+  , capsetStateWallSecs = capsetStateImplWallSecs
+  , capsetStateWallNsecs = capsetStateImplWallNsecs
+  , capsetStateHeapAllocated = capsetStateImplHeapAllocated
+  , capsetStateHeapSize = capsetStateImplHeapSize
+  , capsetStateHeapLive = capsetStateImplHeapLive
+  , capsetStateHeapGens = capsetStateImplHeapGens
+  , capsetStateHeapMaxSize = capsetStateImplHeapMaxSize
+  , capsetStateHeapAllocAreaSize = capsetStateImplHeapAllocAreaSize
+  , capsetStateHeapMBlockSize = capsetStateImplHeapMBlockSize
+  , capsetStateHeapBlockSize = capsetStateImplHeapBlockSize
+  , capsetStateGCTimestamp = capsetStateImplGcTimestamp
+  , capsetStateGCCopied = capsetStateImplGcCopied
+  , capsetStateGCSlop = capsetStateImplGcSlop
+  , capsetStateGCFrag = capsetStateImplGcFrag
+  , capsetStateGCParThreads = capsetStateImplGcParThreads
+  , capsetStateGCParMaxCopied = capsetStateImplGcParMaxCopied
+  , capsetStateGCParTotCopied = capsetStateImplGcParTotCopied
 
   , capsetStateCaps = S.fromList $ (\(CapsetStateCap _ v) -> v) <$> caps
   , capsetStateArgs = (\(CapsetStateArg _ v) -> v) <$> args
@@ -1564,11 +1566,11 @@ toTaskStateImpl i TaskState{..} = TaskStateImpl {
   , taskStateImplLastTimestamp = taskStateLastTimestamp
   }
 
-fromTaskStateImpl :: TaskStateImpl -> TaskState 
+fromTaskStateImpl :: TaskStateImpl -> TaskState
 fromTaskStateImpl TaskStateImpl{..} = TaskState {
-    taskStateId = taskStateImplTaskId 
-  , taskStateCap = taskStateImplCap 
-  , taskStateTid = KernelThreadId taskStateImplTid 
-  , taskStateTimestamp = taskStateImplTimestamp 
-  , taskStateLastTimestamp = taskStateImplLastTimestamp 
+    taskStateId = taskStateImplTaskId
+  , taskStateCap = taskStateImplCap
+  , taskStateTid = KernelThreadId taskStateImplTid
+  , taskStateTimestamp = taskStateImplTimestamp
+  , taskStateLastTimestamp = taskStateImplLastTimestamp
   }

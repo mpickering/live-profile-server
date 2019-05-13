@@ -12,18 +12,18 @@ module Profile.Live.Server.Config.Auth(
   , makeAuthConfig
   ) where
 
-import Data.Monoid 
+import Data.Monoid
 import Database.Persist.Sql (ConnectionPool)
-import GHC.Generics 
-import Servant.Server.Auth.Token.Config 
+import GHC.Generics
+import Servant.Server.Auth.Token.Config
 import Data.Text (Text)
 
-import qualified Data.Text as T 
+import qualified Data.Text as T
 
 import Profile.Live.Server.Utils
-import Profile.Live.Server.Utils.DeriveJson 
+import Profile.Live.Server.Utils.DeriveJson
 
--- | Authorisation plugin configuration that 
+-- | Authorisation plugin configuration that
 -- can be serialised into settings file.
 data AuthSettings = AuthSettings {
   authSettingsExpire :: !Word -- ^ Amount of seconds when token becomes invalid
@@ -37,8 +37,8 @@ data AuthSettings = AuthSettings {
 $(deriveJSON (derivePrefix "authSettings") ''AuthSettings)
 
 -- | Convert into auth plugin configuration
-makeAuthConfig :: ConnectionPool -> AuthSettings -> AuthConfig 
-makeAuthConfig pool AuthSettings{..} = (defaultAuthConfig pool) {
+makeAuthConfig :: ConnectionPool -> AuthSettings -> AuthConfig
+makeAuthConfig pool AuthSettings{..} = (defaultAuthConfig) {
     defaultExpire = fromIntegral authSettingsExpire
   , maximumExpire = fromIntegral <$> authSettingsMaximumExpire
   , restoreExpire = fromIntegral authSettingsRestoreExpire
@@ -48,7 +48,7 @@ makeAuthConfig pool AuthSettings{..} = (defaultAuthConfig pool) {
   }
 
 -- | Validate password for user, don't accept too small passwords
-validatePassword :: Word -> Text -> Maybe Text 
-validatePassword s t 
+validatePassword :: Word -> Text -> Maybe Text
+validatePassword s t
   | T.length t <= fromIntegral s = Just $ "Password should be greater than " <> showt s <> " symbols"
   | otherwise = Nothing

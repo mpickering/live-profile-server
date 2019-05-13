@@ -1,25 +1,19 @@
-module Main where 
+module Main where
 
 import Control.Concurrent (myThreadId, threadDelay)
 import Control.Concurrent.Async (Async, async, wait)
 import GHC.Conc (labelThread)
-
-import Profile.Live.Leech
+import GHC.Eventlog.Socket
 
 -- import Control.Concurrent (threadDelay)
 -- import Control.Exception (bracket)
--- import Debug.Trace 
-
-opts :: LeechOptions 
-opts = defaultLeechOptions {
-    leechBufferSize = 100
-  }
+-- import Debug.Trace
 
 -- main :: IO ()
 -- main = bracket (startLeech opts) (const stopLeech) $ const $ go 0
---   where 
+--   where
 --   go :: Int -> IO ()
---   go i = do 
+--   go i = do
 --     traceEventIO $ "MyEvent" ++ show i
 --     --putStrLn $ "MyEvent" ++ show i
 --     threadDelay 1000
@@ -38,7 +32,7 @@ fib 1 = 1
 fib n = fib (n - 1) + fib (n - 2)
 
 printFib :: Integer -> IO ()
-printFib n = withLiveEventIO ("fib" ++ show n) $ print (fib n)
+printFib n = print (fib n)
 
 blips :: IO ()
 blips = do
@@ -48,6 +42,7 @@ blips = do
 
 main :: IO ()
 main = do
+  start
   a1 <- async' "evens" $ mapM_ printFib [30, 32 .. 38]
   a2 <- async' "odds"  $ mapM_ printFib [31, 33 .. 39]
   threadDelay 5000000

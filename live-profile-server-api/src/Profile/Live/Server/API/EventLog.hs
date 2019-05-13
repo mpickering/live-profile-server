@@ -16,51 +16,51 @@ module Profile.Live.Server.API.EventLog(
   , EventLogAPI
   , eventLogAPI
   , eventLogOperations
-  ) where 
+  ) where
 
 import Control.Lens
 import Data.Aeson
 import Data.Aeson.Unit
-import Data.Proxy 
+import Data.Proxy
 import Data.Swagger
 import Data.Text
-import GHC.Generics 
+import GHC.Generics
 import Servant.API as S
-import Servant.API.Auth.Token 
+import Servant.API.Auth.Token
 import Servant.API.Auth.Token.Pagination
 import Servant.API.REST.Derive
-import Servant.Swagger 
+import Servant.Swagger
 
 import GHC.RTS.Events
 
 import qualified Data.ByteString.Lazy as BS
 
 import Profile.Live.Server.Utils.DeriveJson
-import Profile.Live.Server.Utils.Schema 
+import Profile.Live.Server.Utils.Schema
 
--- | Identifier of recorded event log 
-type EventLogId = Word 
+-- | Identifier of recorded event log
+type EventLogId = Word
 
 -- | Wrapper around raw bytes to generate proper swagger scheme for API
 newtype EventLogFile = EventLogFile { unEventLogFile :: BS.ByteString }
   deriving (Show, Eq, Generic, MimeRender OctetStream, MimeUnrender OctetStream)
 
-instance ToSchema EventLogFile where 
-  declareNamedSchema _ = do 
-    return $ NamedSchema Nothing $ mempty 
+instance ToSchema EventLogFile where
+  declareNamedSchema _ = do
+    return $ NamedSchema Nothing $ mempty
       & type_ .~ SwaggerString -- TODO: https://github.com/GetShopTV/swagger2/issues/76
 
 -- | Info about imports
 data EventLogImport = EventLogImport {
-  eventLogImportId :: !EventLogId 
+  eventLogImportId :: !EventLogId
 , eventLogImportFileName :: !String
-, eventLogImportPercent :: !Double 
+, eventLogImportPercent :: !Double
 , eventLogImportError :: !(Maybe String)
 } deriving (Generic)
 
 $(deriveJSON (derivePrefix "eventLogImport") ''EventLogImport)
 
-instance ToSchema EventLogImport where 
+instance ToSchema EventLogImport where
   declareNamedSchema = genericDeclareNamedSchema $
     schemaOptionsDropPrefix "eventLogImport"
 
@@ -78,17 +78,17 @@ type EventLogAPI = "eventlog" :> (
     :> Capture "eventlog" EventLogId
     -- :> TokenHeader' '["read-eventlog"] -- TODO: cannot attach header to href, find another way to download file
     :> Get '[OctetStream] (
-        Headers '[S.Header "Content-Disposition" Text] 
+        Headers '[S.Header "Content-Disposition" Text]
         EventLogFile)
   -- Getting list of in process importing of eventlogs
-  :<|> "importing" 
+  :<|> "importing"
     :> TokenHeader' '["read-eventlog"]
-    :> Get '[JSON] [EventLogImport] 
+    :> Get '[JSON] [EventLogImport]
   -- Canceling import
   :<|> "importing" :> "cancel"
-    :> Capture "eventlog" EventLogId 
+    :> Capture "eventlog" EventLogId
     :> TokenHeader' '["write-eventlog"]
-    :> Post '[JSON] Unit 
+    :> Post '[JSON] Unit
   -- Delete eventlog
   :<|> Capture "eventlog" EventLogId
     :> TokenHeader' '["delete-eventlog"]
@@ -96,39 +96,51 @@ type EventLogAPI = "eventlog" :> (
   )
 
 -- | Value to carry type 'EventLogAPI' around
-eventLogAPI :: Proxy EventLogAPI 
-eventLogAPI = Proxy 
+eventLogAPI :: Proxy EventLogAPI
+eventLogAPI = Proxy
 
 -- | Select only operations of the eventlog API
 eventLogOperations :: Traversal' Swagger Operation
 eventLogOperations = operationsOf $ toSwagger eventLogAPI
 
-deriving instance Generic CapsetType 
-instance ToJSON CapsetType 
-instance FromJSON CapsetType 
+deriving instance Generic CapsetType
+instance ToJSON CapsetType
+instance FromJSON CapsetType
 instance ToSchema CapsetType
 
-deriving instance Generic KernelThreadId 
-instance ToJSON KernelThreadId 
-instance FromJSON KernelThreadId 
+deriving instance Generic KernelThreadId
+instance ToJSON KernelThreadId
+instance FromJSON KernelThreadId
 instance ToSchema KernelThreadId
 
-deriving instance Generic MessageTag 
-instance ToJSON MessageTag 
-instance FromJSON MessageTag 
+deriving instance Generic MessageTag
+instance ToJSON MessageTag
+instance FromJSON MessageTag
 instance ToSchema MessageTag
 
-deriving instance Generic ThreadStopStatus 
-instance ToJSON ThreadStopStatus 
-instance FromJSON ThreadStopStatus 
-instance ToSchema ThreadStopStatus
+deriving instance Generic ThreadStopStatus
+instance ToJSON ThreadStopStatus
+instance FromJSON ThreadStopStatus
+instance ToSchema ThreadStopStatus where
+  declareNamedSchema = genericDeclareNamedSchemaUnrestricted defaultSchemaOptions
 
-deriving instance Generic EventInfo 
-instance ToJSON EventInfo 
-instance FromJSON EventInfo 
-instance ToSchema EventInfo
+deriving instance Generic EventInfo
+instance ToJSON EventInfo
+instance FromJSON EventInfo
+instance ToSchema EventInfo where
+  declareNamedSchema = genericDeclareNamedSchemaUnrestricted defaultSchemaOptions
 
-deriving instance Generic Event 
-instance ToJSON Event 
-instance FromJSON Event 
+deriving instance Generic Event
+instance ToJSON Event
+instance FromJSON Event
 instance ToSchema Event
+
+deriving instance Generic HeapProfBreakdown
+instance ToJSON HeapProfBreakdown
+instance FromJSON HeapProfBreakdown
+instance ToSchema HeapProfBreakdown
+
+deriving instance Generic HeapProfFlags
+instance ToJSON HeapProfFlags
+instance FromJSON HeapProfFlags
+instance ToSchema HeapProfFlags

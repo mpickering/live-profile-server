@@ -11,7 +11,7 @@ copyright:           (c) 2016 Anton Gushcha
 category:            Web
 build-type:          Simple
 extra-source-files:
-  README.md 
+  README.md
   CHANGELOG.md
 cabal-version:       >=1.10
 
@@ -20,7 +20,7 @@ library
   exposed-modules:
     Servant.API.REST.Derive.Server
     Servant.API.REST.Derive.Server.Vinyl
-  build-depends:       
+  build-depends:
       base >= 4.7 && < 5
     , aeson                     >= 0.11     && < 1.1
     , aeson-injector            >= 1.0.4    && < 1.1
@@ -35,6 +35,7 @@ library
     , servant-auth-token        >= 0.2      && < 0.3
     , servant-auth-token-api    >= 0.2      && < 0.3
     , servant-rest-derive       >= 0.1      && < 0.2
+    , servant-auth-token-persistent
     , servant-server            >= 0.7      && < 0.8
     , swagger2                  >= 2.0      && < 2.2
     , text                      >= 1.2      && < 1.3

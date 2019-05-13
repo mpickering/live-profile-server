@@ -9,38 +9,40 @@ Portability : Portable
 -}
 module Profile.Live.Server.Application.Connection(
     connectionServer
+    , ConnectionAPI
   ) where
 
 import Control.Monad
 import Data.Aeson.WithField
 import Data.Maybe
-import Data.Proxy 
+import Data.Proxy
 import Database.Persist
-import Servant.API 
+import Servant.API
 import Servant.API.Auth.Token
 import Servant.API.Auth.Token.Pagination
 import Servant.API.REST.Derive
 import Servant.API.REST.Derive.Server
 import Servant.API.REST.Derive.Server.Vinyl
-import Servant.Server 
+import Servant.Server
 import Servant.Server.Auth.Token
 
-import Profile.Live.Server.API.Connection 
-import Profile.Live.Server.Monad 
+import Profile.Live.Server.API.Connection
+import Profile.Live.Server.Monad
 
-connectionServer :: ServerT ConnectionAPI App 
-connectionServer = restServer (Proxy :: Proxy '[ 'GET, 'POST, 'PUT, 'PATCH, 'DELETE]) 
+connectionServer :: ServerT ConnectionAPI App
+connectionServer = restServer (Proxy :: Proxy '[ 'GET, 'POST, 'PUT, 'PATCH, 'DELETE])
   (Proxy :: Proxy Connection) (Proxy :: Proxy "connection")
   (Proxy :: Proxy App)
-  :<|> listConn
+  :<|> undefined --listConn
 
-listConn :: Maybe Page 
+
+listConn :: Maybe Page
   -> Maybe PageSize
   -> MToken' '["read-connection"]
   -> App (PagedList (Id Connection) Connection)
-listConn mp msize token = do 
-  guardAuthToken token 
-  pagination mp msize $ \page size -> do 
+listConn mp msize token = do
+  guardAuthToken token
+  pagination mp msize $ \page size -> do
     (es, total) <- runDB $ (,)
       <$> (do
         (is :: [Key Connection]) <- selectKeysList [] [OffsetBy (fromIntegral $ page * size), LimitTo (fromIntegral size)]

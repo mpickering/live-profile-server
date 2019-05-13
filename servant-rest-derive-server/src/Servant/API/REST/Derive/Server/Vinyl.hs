@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 -- {-# LANGUAGE TemplateHaskell #-}
 {-|
@@ -23,16 +24,17 @@ module Servant.API.REST.Derive.Server.Vinyl(
 import Cases
 import Data.Aeson
 import Data.Bifunctor
-import Data.Monoid 
-import Data.Proxy 
+import Data.Monoid
+import Data.Proxy
 import Data.Text (Text, pack, unpack)
-import Data.Typeable 
-import Data.Vinyl.Core 
-import Data.Vinyl.Derived 
+import Data.Typeable
+import Data.Vinyl.Core
+import Data.Vinyl
+import Data.Vinyl.Derived
 import Data.Vinyl.Lens
 import Database.Persist
 import Database.Persist.Sql
-import GHC.TypeLits 
+import GHC.TypeLits
 import Servant.API.REST.Derive
 import Servant.API.REST.Derive.Named
 import Servant.API.REST.Derive.Patch
@@ -44,29 +46,29 @@ import Web.PathPieces
 -- import Database.Persist.Quasi
 -- import Database.Persist.TH
 -- import Language.Haskell.TH
--- import Data.Text 
--- 
--- $(do 
+-- import Data.Text
+--
+-- $(do
 --   let fields = $(persistFileWith lowerCaseSettings "test.persist")
 --   reportError . pprint =<< mkMigrate "migrateAll" fields -- mkPersist sqlSettings fields
 --   return []
 --   )
 
 -- | Helper to derive attributes of field for a type
-class DeriveEntityFieldAttr a where 
+class DeriveEntityFieldAttr a where
   deriveEntityFieldAttr :: Proxy a -> ([Attr], SqlType)
 
-instance {-# OVERLAPPABLE #-} PersistFieldSql a => DeriveEntityFieldAttr a where 
+instance {-# OVERLAPPABLE #-} PersistFieldSql a => DeriveEntityFieldAttr a where
   deriveEntityFieldAttr p = ([], sqlType p)
 
-instance {-# OVERLAPPING #-} PersistFieldSql a => DeriveEntityFieldAttr (Maybe a) where 
+instance {-# OVERLAPPING #-} PersistFieldSql a => DeriveEntityFieldAttr (Maybe a) where
   deriveEntityFieldAttr _ = (["Maybe"], sqlType (Proxy :: Proxy a))
 
 -- | Helper for defining fields definitions of persistent entity
-class DeriveEntityFields (fields :: [(Symbol, *)]) where 
+class DeriveEntityFields (fields :: [(Symbol, *)]) where
   deriveEntityFields :: forall proxy . proxy fields -> [FieldDef]
 
-  deriveEntity :: forall proxy . Named (FieldRec fields) => proxy fields -> EntityDef 
+  deriveEntity :: forall proxy . Named (FieldRec fields) => proxy fields -> EntityDef
   deriveEntity _ = EntityDef {
       entityHaskell = HaskellName name
     , entityDB = DBName . snakify $ name
@@ -77,24 +79,25 @@ class DeriveEntityFields (fields :: [(Symbol, *)]) where
     , entityForeigns = []
     , entityDerives = []
     , entityExtra = mempty
-    , entitySum = False 
+    , entitySum = False
+    , entityComments = Nothing
     }
-    where 
+    where
     name = pack $ getName (Proxy :: Proxy (FieldRec fields))
 
-instance DeriveEntityFields '[] where 
+instance DeriveEntityFields '[] where
   deriveEntityFields _ = []
 
 -- | Special case for id to workaround missing 'Typeable' instance for type tuple
 -- literal
 instance {-# OVERLAPPING #-} (
     KnownSymbol n
-  -- , Typeable a -- ghc panic here 
+  -- , Typeable a -- ghc panic here
   , DeriveEntityFieldAttr (Id a)
   , DeriveEntityFields fs
-  ) => DeriveEntityFields ('(n, Id a) ': fs) where 
+  ) => DeriveEntityFields ('(n, Id a) ': fs) where
   deriveEntityFields _ = f : deriveEntityFields (Proxy :: Proxy fs)
-    where 
+    where
     n = pack $ symbolVal (Proxy :: Proxy n)
     as = "Id" -- pack . show $ typeRep (Proxy :: Proxy a)
     (attrs, sqlt) = deriveEntityFieldAttr (Proxy :: Proxy (Id a))
@@ -106,6 +109,7 @@ instance {-# OVERLAPPING #-} (
       , fieldAttrs = attrs
       , fieldStrict = True
       , fieldReference = NoReference
+      , fieldComments = Nothing
       }
 
 instance {-# OVERLAPPABLE #-} (
@@ -113,9 +117,9 @@ instance {-# OVERLAPPABLE #-} (
   , Typeable a
   , DeriveEntityFieldAttr a
   , DeriveEntityFields fs
-  ) => DeriveEntityFields ('(n, a) ': fs) where 
+  ) => DeriveEntityFields ('(n, a) ': fs) where
   deriveEntityFields _ = f : deriveEntityFields (Proxy :: Proxy fs)
-    where 
+    where
     n = pack $ symbolVal (Proxy :: Proxy n)
     as = pack . show $ typeRep (Proxy :: Proxy a)
     (attrs, sqlt) = deriveEntityFieldAttr (Proxy :: Proxy a)
@@ -127,33 +131,34 @@ instance {-# OVERLAPPABLE #-} (
       , fieldAttrs = attrs
       , fieldStrict = True
       , fieldReference = NoReference
+      , fieldComments = Nothing
       }
 
 -- | Helper to wrap vinyl record into 'SomePersistField'
-class ToVinylPersistFields a where 
+class ToVinylPersistFields a where
   toVinylPersistFields :: a -> [SomePersistField]
 
-instance ToVinylPersistFields (FieldRec '[]) where 
+instance ToVinylPersistFields (FieldRec '[]) where
   toVinylPersistFields _ = []
 
-instance (PersistField a, ToVinylPersistFields (FieldRec as)) => ToVinylPersistFields (FieldRec ('(n, a) ': as)) where 
+instance (PersistField a, ToVinylPersistFields (FieldRec as)) => ToVinylPersistFields (FieldRec ('(n, a) ': as)) where
   toVinylPersistFields (Field a :& as) = SomePersistField a : toVinylPersistFields as
 
 -- | Helper to read vinyl record from persistent values
-class FromVinylPersistValues a where 
+class FromVinylPersistValues a where
   fromVinylPersistValues :: [PersistValue] -> Either Text a
 
-instance FromVinylPersistValues (FieldRec '[]) where 
-  fromVinylPersistValues _ = Right RNil 
+instance FromVinylPersistValues (FieldRec '[]) where
+  fromVinylPersistValues _ = Right RNil
 
-instance (KnownSymbol n, PersistField a, FromVinylPersistValues (FieldRec as)) => FromVinylPersistValues (FieldRec ('(n, a) ': as)) where 
+instance (KnownSymbol n, PersistField a, FromVinylPersistValues (FieldRec as)) => FromVinylPersistValues (FieldRec ('(n, a) ': as)) where
   fromVinylPersistValues vs = case vs of
     [] -> Left $ "expected a value for '" <> n <> "' field"
-    (v:vs') -> do 
-      a <- first fieldError . fromPersistValue $ v 
+    (v:vs') -> do
+      a <- first fieldError . fromPersistValue $ v
       as <- fromVinylPersistValues vs'
       return $ Field a :& as
-    where 
+    where
       n = pack $ symbolVal (Proxy :: Proxy n)
       fieldError err = "field " <> n <> ": " <> err
 
@@ -161,24 +166,24 @@ instance (Named (FieldRec fields)
         , DeriveEntityFields fields
         , ToVinylPersistFields (FieldRec fields)
         , FromVinylPersistValues (FieldRec fields)
-        ) => PersistEntity (FieldRec fields) where 
+        ) => PersistEntity (FieldRec fields) where
 
   data Key (FieldRec fields) = VKey { unVKey :: Id (FieldRec fields) }
     deriving (Eq, Show, Read, Ord)
 
-  data EntityField (FieldRec fields) typ where 
+  data EntityField (FieldRec fields) typ where
     DBFieldId :: EntityField (FieldRec fields) (Key (FieldRec fields))
-    DBField :: ('(n, a) ~ field, KnownSymbol n, RElem field fields i) 
+    DBField :: ('(n, a) ~ field, KnownSymbol n, RElem field fields i)
       => Proxy field -> EntityField (FieldRec fields) a
 
   data Unique (FieldRec fields)
 
   keyToValues = pure . toPersistValue . unId . unVKey
-  keyFromValues vs = case vs of 
+  keyFromValues vs = case vs of
     [] -> Left "Expected value for id"
     (v:_) -> fmap (VKey . Id) . fromPersistValue $ v
 
-  entityDef _ = deriveEntity (Proxy :: Proxy fields) 
+  entityDef _ = deriveEntity (Proxy :: Proxy fields)
 
   toPersistFields = toVinylPersistFields
   fromPersistValues = fromVinylPersistValues
@@ -187,29 +192,29 @@ instance (Named (FieldRec fields)
   persistUniqueToValues _ = error "Degenerate case, should never happen"
   persistUniqueKeys _ = []
 
-  persistFieldDef f = case f of 
-    DBFieldId -> entityIdField name 
+  persistFieldDef f = case f of
+    DBFieldId -> entityIdField name
     DBField (_ :: Proxy '(n, a)) -> let
       n = pack $ symbolVal (Proxy :: Proxy n)
-      in case filter (hasSameName n) fields of 
+      in case filter (hasSameName n) fields of
         [] -> error . unpack $ "Unknown field '" <> n <> "' for type " <> name
         (x:_) -> x
     where
     fields = deriveEntityFields (Proxy :: Proxy fields)
     name = pack $ getName (Proxy :: Proxy (FieldRec fields))
-    hasSameName n FieldDef{..} = let 
-      HaskellName n' = fieldHaskell 
-      in n' == n 
+    hasSameName n FieldDef{..} = let
+      HaskellName n' = fieldHaskell
+      in n' == n
 
   type PersistEntityBackend (FieldRec fields) = SqlBackend
 
-  persistIdField = DBFieldId 
+  persistIdField = DBFieldId
 
-  fieldLens f = case f of 
+  fieldLens f = case f of
     DBFieldId -> lensPTH entityKey $ \(Entity _ v) i -> Entity i v
     DBField (pn :: Proxy '(n, a)) -> lensPTH (getter . entityVal) $ \(Entity i v) a -> Entity i (setter a v)
-      where 
-      getter = getField . rget pn
+      where
+      getter = getField . rget @'(n, a)
       setter v = rput (Field v :: ElField '(n, a))
 
 type Lens s t a b = forall f. Functor f => (a -> f b) -> s -> f t
@@ -224,54 +229,55 @@ entityIdField n = FieldDef {
   , fieldType = FTTypeCon Nothing "VKey"
   , fieldSqlType = SqlInt64
   , fieldAttrs = []
-  , fieldStrict = True 
+  , fieldStrict = True
   , fieldReference = ForeignRef (HaskellName n) (FTTypeCon Nothing "Word")
+  , fieldComments = Nothing
   }
 
-instance FromJSON (Key (FieldRec fields)) where 
+instance FromJSON (Key (FieldRec fields)) where
   parseJSON = fmap VKey . parseJSON
 
-instance ToJSON (Key (FieldRec fields)) where 
-  toJSON (VKey i) = toJSON i 
+instance ToJSON (Key (FieldRec fields)) where
+  toJSON (VKey i) = toJSON i
 
-instance PathPiece (Key (FieldRec fields)) where 
+instance PathPiece (Key (FieldRec fields)) where
   fromPathPiece = fmap VKey . fromPathPiece
-  toPathPiece (VKey i) = toPathPiece i 
+  toPathPiece (VKey i) = toPathPiece i
 
-instance ToHttpApiData (Key (FieldRec fields)) where 
-  toUrlPiece (VKey i) = toUrlPiece i 
+instance ToHttpApiData (Key (FieldRec fields)) where
+  toUrlPiece (VKey i) = toUrlPiece i
 
-instance FromHttpApiData (Key (FieldRec fields)) where 
+instance FromHttpApiData (Key (FieldRec fields)) where
   parseUrlPiece = fmap VKey . parseUrlPiece
 
-instance PersistFieldSql (Key (FieldRec fields)) where 
+instance PersistFieldSql (Key (FieldRec fields)) where
   sqlType _ = sqlType (Proxy :: Proxy Word)
 
-instance PersistField (Key (FieldRec fields)) where 
-  toPersistValue (VKey (Id w)) = toPersistValue w 
-  fromPersistValue v = case v of 
+instance PersistField (Key (FieldRec fields)) where
+  toPersistValue (VKey (Id w)) = toPersistValue w
+  fromPersistValue v = case v of
     PersistInt64 i -> Right . VKey . Id . fromIntegral $ i
     _ -> Left "Expected Int64 value for key"
 
 instance (
-    Named (FieldRec fields) 
+    Named (FieldRec fields)
   , ToVinylPersistFields (FieldRec fields)
   , FromVinylPersistValues (FieldRec fields)
   , DeriveEntityFields fields
-  ) => ToBackendKey SqlBackend (FieldRec fields) 
-  where 
+  ) => ToBackendKey SqlBackend (FieldRec fields)
+  where
     toBackendKey = fromIntegral . unId . unVKey
     fromBackendKey = VKey . Id . fromIntegral
 
 instance (
     PersistEntity (FieldRec fields)
-  ) => ResourceRead (FieldRec fields) where 
+  ) => ResourceRead (FieldRec fields) where
   -- readResource :: Id a -> SqlPersistT m (Maybe a)
-  readResource = get . VKey 
+  readResource = get . VKey
 
 instance (
     PersistEntity (FieldRec fields)
-  ) => ResourceWrite (FieldRec fields) where 
+  ) => ResourceWrite (FieldRec fields) where
   -- insertResource :: a -> SqlPersistT m (Id a)
   insertResource = fmap unVKey . insert
 
@@ -282,28 +288,28 @@ instance (
     ResourceRead (FieldRec fields)
   , ResourceWrite (FieldRec fields)
   , Patchable (FieldRec fields) (PatchRec (FieldRec fields))
-  ) => ResourcePatch (FieldRec fields) where 
+  ) => ResourcePatch (FieldRec fields) where
   -- patchResource :: Id a -> PatchRec a -> SqlPersistT m ()
-  patchResource i pa = do 
+  patchResource i pa = do
     ma <- readResource i
-    case ma of 
+    case ma of
       Nothing -> return ()
-      Just a -> replaceResource i $ applyPatch a pa 
+      Just a -> replaceResource i $ applyPatch a pa
 
 instance (
     PersistEntity (FieldRec fields)
-  ) => ResourceDelete (FieldRec fields) where 
+  ) => ResourceDelete (FieldRec fields) where
   -- deleteResource :: Id a -> SqlPersistT m ()
   deleteResource = delete . VKey
 
 -- | Migration deriving for vinyl records
-class VinylMigration a where 
-  migrateVinyl :: forall proxy . proxy a -> Migration 
+class VinylMigration a where
+  migrateVinyl :: forall proxy . proxy a -> Migration
 
 instance (
-    Named (FieldRec fields) 
+    Named (FieldRec fields)
   , DeriveEntityFields fields
   ) => VinylMigration (FieldRec fields) where
-  migrateVinyl _ = do 
+  migrateVinyl _ = do
     let defs = [deriveEntity (Proxy :: Proxy fields)] -- TODO: collect references
     migrate defs $ deriveEntity (Proxy :: Proxy fields)
